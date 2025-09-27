@@ -1,0 +1,321 @@
+Create the app pages and wire them to the APIs.
+
+Return ONLY code blocks, one per file:
+
+// path: src/app/intake/page.tsx
+'use client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { FlashcardIntakeSchema, McqIntakeSchema } from '@/lib/types'
+
+export default function IntakePage() {
+  const [tab, setTab] = useState<'FLASHCARD'|'MCQ'>('FLASHCARD')
+  const [jsonText, setJsonText] = useState('')
+  const [errors, setErrors] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+
+  async function onValidate() {
+    try {
+      const obj = JSON.parse(jsonText)
+      setErrors([])
+      if (tab === 'FLASHCARD') FlashcardIntakeSchema.parse(obj)
+      else McqIntakeSchema.parse(obj)
+      setErrors(['OK: Validation passed'])
+    } catch (e:any) {
+      if (e.name === 'ZodError') setErrors(e.issues.map((i:any) => `${i.path.join('.')}: ${i.message}`))
+      else setErrors([e.message || 'Invalid JSON'])
+    }
+  }
+
+  async function onSubmit() {
+    try {
+      setLoading(true)
+      const obj = JSON.parse(jsonText)
+      if (tab === 'FLASHCARD') FlashcardIntakeSchema.parse(obj)
+      else McqIntakeSchema.parse(obj)
+
+      const res = await fetch(`/api/intake/${tab === 'FLASHCARD' ? 'flashcard' : 'mcq'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(obj),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        if (data?.issues) setErrors(data.issues.map((i:any) => `${i.path.join('.')}: ${i.message}`))
+        else setErrors([data?.error || 'Submit failed'])
+        return
+      }
+      router.push(`/item/${data.itemId}`)
+    } catch (e:any) {
+      setErrors([e.message || 'Unexpected error'])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-3 rounded-lg shadow inline-flex space-x-2">
+        <button onClick={() => setTab('FLASHCARD')} className={`px-3 py-2 rounded ${tab==='FLASHCARD'?'bg-indigo-600 text-white':'bg-gray-100'}`}>Flashcard</button>
+        <button onClick={() => setTab('MCQ')} className={`px-3 py-2 rounded ${tab==='MCQ'?'bg-indigo-600 text-white':'bg-gray-100'}`}>MCQ</button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-medium">Paste JSON</h3>
+            <div className="space-x-2">
+              <button onClick={onValidate} className="px-3 py-2 text-sm rounded bg-gray-100">Validate</button>
+              <button disabled={loading} onClick={onSubmit} className="px-3 py-2 text-sm rounded bg-indigo-600 text-white disabled:opacity-50">{loading?'Submitting…':'Submit'}</button>
+              <button onClick={()=>{setJsonText(''); setErrors([])}} className="px-3 py-2 text-sm rounded bg-gray-100">Clear</button>
+            </div>
+          </div>
+          <textarea value={jsonText} onChange={e=>setJsonText(e.target.value)} rows={20} className="w-full border rounded p-2 font-mono text-xs" placeholder={tab==='FLASHCARD'
+? `{\n  "subject":"Medicine", "topic":"GI bleeding",\n  "front_text":"...", "back_text":"...",\n  "references":[{"source":"Book", "page":"123"}]\n}`
+: `{\n  "subject":"Thorax", "topic":"Trachea",\n  "stem":"...", "options":["A","B","C","D"], "correct_index":1,\n  "explanation":{"summary":"...", "references":[{"source":"Book","page":"321"}]}\n}`} />
+          {errors.length>0 && (
+            <div className="mt-3 bg-red-50 border border-red-200 text-red-800 rounded p-2 text-sm space-y-1">
+              {errors.map((e,i)=><div key={i}>{e}</div>)}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="font-medium mb-2">Quick form (optional)</h3>
+          <p className="text-sm text-gray-500">For MVP, use JSON paste. We’ll add full form fields later.</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// path: src/app/queue/page.tsx
+import FilterBar from '@/components/FilterBar'
+import QueueCard from '@/components/QueueCard'
+
+async function fetchItems(searchParams: Record<string,string|undefined>) {
+  const qs = new URLSearchParams(Object.fromEntries(Object.entries(searchParams).filter(([_,v])=>v)))
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/api/items?${qs.toString()}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Failed to load items')
+  return res.json()
+}
+
+export default async function QueuePage({ searchParams }: { searchParams: Record<string,string|undefined> }) {
+  const items = await fetchItems(searchParams)
+  return (
+    <div>
+      <FilterBar />
+      {items.length === 0 ? (
+        <div className="text-sm text-gray-500">No items match your filters.</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {items.map((it:any)=><QueueCard key={it.id} item={it} />)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// path: src/app/item/[id]/page.tsx
+import Evidence from '@/components/Evidence'
+
+async function fetchItem(id: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/api/items/${id}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Failed to load item')
+  return res.json()
+}
+
+export default async function ItemDetail({ params }: { params: { id: string } }) {
+  const item = await fetchItem(params.id)
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 bg-white p-4 rounded-lg shadow">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">{item.subject} • {item.topic}</h2>
+        {item.type === 'FLASHCARD' ? (
+          <div className="space-y-3">
+            <div><span className="text-sm font-medium text-gray-700">Front</span><p className="mt-1">{item.flashcard?.frontText}</p></div>
+            <div><span className="text-sm font-medium text-gray-700">Back</span><p className="mt-1 whitespace-pre-wrap">{item.flashcard?.backText}</p></div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div><span className="text-sm font-medium text-gray-700">Stem</span><p className="mt-1">{item.mcq?.stem}</p></div>
+            <div>
+              <span className="text-sm font-medium text-gray-700">Options</span>
+              <ol className="list-decimal ml-5 mt-1 space-y-1">
+                {Array.isArray(item.mcq?.options) && item.mcq.options.map((o:string, i:number)=><li key={i}>{o}</li>)}
+              </ol>
+            </div>
+            <div><span className="text-sm font-medium text-gray-700">Correct</span><p className="mt-1">{(item.mcq?.correctIndex ?? 0)+1}</p></div>
+            <div><span className="text-sm font-medium text-gray-700">Explanation</span><p className="mt-1 whitespace-pre-wrap">{item.mcq?.explanation?.summary}</p></div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white p-4 rounded-lg shadow space-y-6">
+        <div>
+          <h3 className="font-medium">Auto-checks</h3>
+          <div className="mt-2 text-sm text-gray-700 space-y-1">
+            <div>Groundedness: {item.autoChecks?.groundednessScore ?? '—'}</div>
+            <div>Faithfulness: {item.autoChecks?.faithfulnessScore ?? '—'}</div>
+            <div>Ref coverage: {item.autoChecks?.referenceCoverage ?? '—'}</div>
+            <div>Duplicates: {Array.isArray(item.autoChecks?.possibleDuplicates) ? item.autoChecks.possibleDuplicates.length : 0}</div>
+            <div>Conflicts: {Array.isArray(item.autoChecks?.claimsWithNumbers) ? item.autoChecks.claimsWithNumbers.length : 0}</div>
+          </div>
+        </div>
+
+        <Evidence references={item.references} />
+
+        <Actions itemId={item.id} itemType={item.type} item={item} />
+      </div>
+    </div>
+  )
+}
+
+'use client'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
+function Actions({ itemId, itemType, item }: { itemId:string; itemType:'FLASHCARD'|'MCQ'; item:any }) {
+  const router = useRouter()
+  const [saving, setSaving] = useState(false)
+  const [patch, setPatch] = useState<any>({})
+
+  async function action(a: string, body: any = {}) {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ action: a, ...body }),
+      })
+      if (!res.ok) throw new Error('Action failed')
+      router.refresh()
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-medium">Actions</h3>
+      <div className="flex flex-wrap gap-2">
+        <button onClick={()=>action('request_changes', { note:'Please revise' })} className="px-3 py-2 rounded bg-amber-600 text-white">Request changes</button>
+        <button onClick={()=>action('publish')} className="px-3 py-2 rounded bg-green-600 text-white">Publish</button>
+      </div>
+
+      <div className="space-y-2">
+        <h4 className="font-medium text-sm">Quick edit</h4>
+        {itemType==='FLASHCARD' ? (
+          <>
+            <textarea defaultValue={item.flashcard?.backText} onChange={e=>setPatch((p:any)=>({ ...p, backText:e.target.value }))} rows={5} className="w-full border rounded p-2 text-sm" />
+          </>
+        ):(
+          <>
+            <textarea defaultValue={item.mcq?.explanation?.summary} onChange={e=>setPatch((p:any)=>({ ...p, explanation:{ ...(p.explanation||{}), summary:e.target.value } }))} rows={5} className="w-full border rounded p-2 text-sm" />
+          </>
+        )}
+        <button disabled={saving} onClick={()=>action('edit',{ patch })} className="px-3 py-2 rounded bg-indigo-600 text-white disabled:opacity-50">{saving?'Saving…':'Save edits'}</button>
+      </div>
+
+      <div className="space-y-2">
+        <h4 className="font-medium text-sm">Remap competency</h4>
+        <input type="text" placeholder="Competency ID" onChange={e=>setPatch((p:any)=>({ ...p, competencyId:e.target.value }))} className="w-full border rounded p-2 text-sm" />
+        <button onClick={()=>action('remap_competency', { competencyId: patch.competencyId })} className="px-3 py-2 rounded bg-gray-700 text-white">Update mapping</button>
+      </div>
+    </div>
+  )
+}
+
+// path: src/app/journal/page.tsx
+'use client'
+import { useEffect, useState } from 'react'
+
+export default function JournalPage() {
+  const [notes, setNotes] = useState<any[]>([])
+  const [text, setText] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function load() {
+    const res = await fetch('/api/journal')
+    if (res.ok) setNotes(await res.json())
+  }
+  useEffect(()=>{ load() }, [])
+
+  async function save() {
+    setSaving(true)
+    try {
+      const res = await fetch('/api/journal', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text }) })
+      if (res.ok) { setText(''); load() }
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="font-medium mb-2">Today</h3>
+        <textarea value={text} onChange={e=>setText(e.target.value)} rows={4} className="w-full border rounded p-2" />
+        <button disabled={saving} onClick={save} className="mt-2 px-3 py-2 rounded bg-indigo-600 text-white disabled:opacity-50">{saving?'Saving…':'Save'}</button>
+      </div>
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="font-medium mb-2">History</h3>
+        <ul className="space-y-3">
+          {notes.map(n=>(
+            <li key={n.id} className="text-sm">
+              <div className="text-gray-500">{new Date(n.date).toLocaleString()}</div>
+              <div>{n.text}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+// path: src/app/analytics/page.tsx
+import Bars from '@/components/Bars'
+
+async function getAnalytics() {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/api/analytics`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Failed to load analytics')
+  return res.json()
+}
+
+export default async function AnalyticsPage() {
+  const data = await getAnalytics()
+  const throughput = [
+    { label: 'Submitted', value: data.throughput.submitted },
+    { label: 'Published', value: data.throughput.published },
+    { label: 'Changes', value: data.throughput.changesRequested },
+  ]
+  const flags = [
+    { label: 'Duplicates', value: data.qualityFlags.itemsWithDuplicates },
+    { label: 'Low cov.', value: data.qualityFlags.itemsWithLowCoverage },
+  ]
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="font-medium mb-2">Throughput (7d)</h3>
+        <Bars data={throughput} />
+      </div>
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="font-medium mb-2">Quality flags (total)</h3>
+        <Bars data={flags} />
+      </div>
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="font-medium mb-2">Coverage by subject</h3>
+        <ul className="space-y-1 text-sm">
+          {data.coverageBySubject.map((r:any)=>(
+            <li key={r.subject} className="flex justify-between">
+              <span>{r.subject}</span><span className="text-gray-600">{r.count}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}

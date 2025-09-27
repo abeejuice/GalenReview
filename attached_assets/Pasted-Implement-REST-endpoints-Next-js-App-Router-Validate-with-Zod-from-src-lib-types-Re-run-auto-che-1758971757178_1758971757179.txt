@@ -1,0 +1,46 @@
+Implement REST endpoints (Next.js App Router). Validate with Zod from src/lib/types. Re-run auto-checks on edits.
+
+Return ONLY code blocks, one per file, in this format:
+
+// path: <relative file path>
+<full file contents>
+
+Files to output:
+
+// path: src/app/api/intake/flashcard/route.ts
+// POST: validate FlashcardIntake; create Item + Flashcard + References; status=NEEDS_REVIEW; call runAutoChecks; return { itemId }
+// Notes: use getServerSession(authOptions) to ensure user is logged in; use prisma; handle zod errors (400).
+
+// path: src/app/api/intake/mcq/route.ts
+// POST: validate McqIntake; create Item + MCQ + References; status=NEEDS_REVIEW; call runAutoChecks; return { itemId }
+
+// path: src/app/api/items/route.ts
+// GET: list items with optional filters query params: subject?, type? (FLASHCARD|MCQ), status?, flag? ('duplicate'|'conflict'|'lowcoverage')
+// Response: array of compact cards: { id, type, subject, topic, bloom, difficulty, status, autoChecks: { possibleDuplicatesCount, referenceCoverage } }
+
+// path: src/app/api/items/[id]/route.ts
+// GET: return expanded item: { item, flashcard|mcq, references[], autoChecks }
+// PATCH: accept JSON body with { action: 'request_changes'|'publish'|'edit'|'remap_competency', ... }
+//   - request_changes: { note: string } -> status=CHANGES_REQUESTED (store note in Item.notes? if not present, ignore note but update status)
+//   - publish: -> status=PUBLISHED
+//   - edit: { patch: { for FLASHCARD: frontText?, backText?; for MCQ: stem?, options?, correctIndex?, explanation?; references?: { replace?: boolean; upsert?: Array<{id?:string, source:string, page?:string}> } } } -> apply, then re-run runAutoChecks, return updated detail
+//   - remap_competency: { competencyId: string } -> item.competencyId = provided
+
+// path: src/app/api/journal/route.ts
+// POST: { text } -> create JournalNote for current user; return { id, date, text }
+// GET: return latest 30 notes for current user ordered desc
+
+// path: src/app/api/analytics/route.ts
+// GET: compute last-7-day counts for submitted (NEEDS_REVIEW+DRAFT), published, changes_requested; 
+// also return quality flags summary: total items with possibleDuplicates > 0, items with referenceCoverage='low';
+// and coverageBySubject: count per subject.
+
+Implementation details for all handlers:
+- import { getServerSession } from 'next-auth/next' and { authOptions } from '@/app/api/auth/[...nextauth]/route'
+- if no session -> return 401 JSON
+- use prisma from '@/lib/db'
+- on zod validation error, return 400 with { code:'VALIDATION_ERROR', issues }
+// utility: a small helper to parse URLSearchParams safely; pagination optional but keep it simple (limit 50).
+- Make sure to import and use runAutoChecks from 'src/lib/autochecks/run'
+
+Do not include prose outside the code blocks.

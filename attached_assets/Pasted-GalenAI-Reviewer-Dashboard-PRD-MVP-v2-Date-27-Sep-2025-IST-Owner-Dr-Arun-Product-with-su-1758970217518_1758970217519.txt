@@ -1,0 +1,391 @@
+GalenAI Reviewer Dashboard — PRD (MVP v2)
+
+Date: 27 Sep 2025 (IST)Owner: Dr. Arun (Product), with support from DE + UI EngineerVersion: MVP v2 (no Editor role, manual page verification, no Teams/embeddings)
+
+1) Product Summary
+
+A web app where the Contributor (Data Engineer) submits MCQs/Flashcards as JSON or via a simple form. The Reviewer (Doctor/Content team) sees an organized review queue by Subject → Topic → Competency, opens items in a two‑pane detail view (content + auto‑checks), leaves change requests, and publishes once satisfied. A day‑wise Journal captures reviewer notes. Lightweight Analytics show throughput, quality flags, and curriculum coverage.
+
+Primary Goals
+
+Replace ad‑hoc Teams/Word docs with a structured intake + review system.
+
+Show auto‑checks that surface duplicates, number/percent claims, Bloom verb hints, and competency suggestions.
+
+Keep page‑exact source verification manual (done by doctors), no PDF parsing.
+
+Explicitly Out of Scope (MVP)
+
+Microsoft Teams app/tab integration.
+
+Vector embeddings / LLM‑based duplicate detection.
+
+Automated PDF/page scraping or OCR.
+
+2) Users, Roles, Permissions
+
+Contributor (Data Engineer)Create/submit items; see validation errors; view auto‑checks; cannot publish.
+
+Reviewer (Doctor/Content)View queues; open items; edit content; request changes; publish; remap competency.
+
+No Editor role in MVP. (Can be added later for bulk ops.)
+
+Capability
+
+Anonymous
+
+Contributor
+
+Reviewer
+
+Sign in
+
+✗
+
+✓
+
+✓
+
+Submit item (Flashcard/MCQ)
+
+✗
+
+✓
+
+✓
+
+View queue & item detail
+
+✗
+
+✓ (own items)
+
+✓ (all)
+
+Edit item
+
+✗
+
+✓ (until published)
+
+✓
+
+Request changes
+
+✗
+
+✗
+
+✓
+
+Publish
+
+✗
+
+✗
+
+✓
+
+Journal & Analytics
+
+✗
+
+✗
+
+✓
+
+3) Success Metrics (MVP)
+
+Time‑to‑publish median ≤ 48h per item.
+
+Change‑request rate baseline; track trend ↓ over 4 weeks.
+
+Coverage: ≥ 100 items tagged across ≥ 6 core subjects in month 1.
+
+Reviewer satisfaction (quick pulse): ≥ 4/5.
+
+4) Key Workflows & Acceptance Criteria
+
+4.1 Submit Item (Contributor)
+
+Open Intake → choose type (Flashcard/MCQ).
+
+Paste JSON or use form fields.
+
+Validate (client + server) → errors annotated inline.
+
+Submit → item saved as NEEDS_REVIEW; auto‑checks run; item appears in queue.
+
+Acceptance:
+
+Malformed JSON or missing required fields yields named errors (field + reason).
+
+References require at least source and a page if numeric claims are present in the text.
+
+MCQ must have ≥ 4 options; correct_index within bounds.
+
+4.2 Review Item (Reviewer)
+
+Open Review Queue → filter/sort.
+
+Click a card → Item Detail (two‑pane).
+
+Inspect Auto‑checks and Evidence; manually verify cited pages.
+
+Actions: Request changes (with note), Edit, Remap competency, or Publish.
+
+Acceptance:
+
+After Publish, item status becomes PUBLISHED and disappears from review backlog filters.
+
+Request changes sets status CHANGES_REQUESTED; author sees notes on item.
+
+Editing re‑runs auto‑checks and updates the panel.
+
+4.3 Journal
+
+Reviewer writes a day‑note (“Today”).
+
+Entries are timestamped and list recent items touched.
+
+4.4 Analytics
+
+Show: Throughput (submitted/published/changes), Quality flags (duplicates, conflicts), Coverage (items by Subject/Topic/Competency).
+
+5) Information Architecture & Navigation
+
+Top Tabs: Intake • Review Queue • Item Detail • Journal • Analytics • SettingsFilters: Subject, Topic, Competency, Type, Status, Flags (Duplicate, Conflict, Low Coverage)Item chips: Subject • Topic • Competency • Bloom • Difficulty • Status • Flags
+
+6) Page Wireframes (content outline)
+
+6.1 Intake
+
+Type selector (Flashcard/MCQ)
+
+JSON paste box or form fields
+
+Buttons: Validate, Submit, Clear
+
+Validation Errors panel
+
+Auto‑checks (will run post‑submit) info box
+
+6.2 Review Queue
+
+Filter bar
+
+Grid/list of Item Cards (title + chips + flags)
+
+Infinite scroll/pagination
+
+6.3 Item Detail (two‑pane)
+
+Left: item content (Flashcard front/back OR MCQ stem/options/explanation)
+
+Right: Auto‑checks, CBME panel (competency text if mapped), Evidence (references + pages)
+
+Actions: Request changes, Edit, Remap competency, Publish
+
+6.4 Journal
+
+Today box (textarea + Save)
+
+History list (date + note)
+
+6.5 Analytics
+
+Throughput bars; Quality flags chips; Coverage bars/heatmap.
+
+7) Validation Rules (who & how)
+
+Client (browser): instant checks before submit.Server (API): Zod schema mirrors client; enforces rules; blocks DB write on failure.
+
+7.1 Flashcard (required)
+
+subject (string, non‑empty)
+
+topic (string, non‑empty)
+
+front_text (string, ≥ 10 chars)
+
+back_text (string, ≥ 10 chars)
+
+references[] with { source: string, page?: string }
+
+If numeric claims detected in text → require at least one page present.
+
+7.2 MCQ (required)
+
+subject, topic, stem non‑empty
+
+options: array length ≥ 4; all unique
+
+correct_index within array bounds
+
+explanation.summary non‑empty
+
+explanation.references[] with source; numeric claims → require page.
+
+8) Auto‑Checks Pipeline (MVP)
+
+Triggered immediately after create/edit (server‑side) and persisted to AutoChecks.
+
+Duplicate detector (string‑only):Normalize strings; compute similarity within same topic. If ≥ 0.85 → list IDs as possibleDuplicates.
+
+Numbers & % extractor:Regex catches numbers/percentages/units. If present and no reference page supplied → referenceCoverage = low.Also surface conflicts by listing other items in same topic that assert different numbers.
+
+Bloom hint (heuristic):Verb → Bloom map (e.g., list/define → Remember; explain/describe → Understand; apply/calculate → Apply…). Mark mismatch as a soft hint.
+
+Competency suggester (static):Keyword → top 3 likely competencies for reviewer pick.
+
+Re‑run auto‑checks after any PATCH that changes content, references, or competency.
+
+9) Data Model (Prisma sketch)
+
+enum Role { CONTRIBUTOR REVIEWER }
+
+enum ItemType { FLASHCARD MCQ }
+
+enum Status { DRAFT NEEDS_REVIEW CHANGES_REQUESTED PUBLISHED }
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(REVIEWER)
+  createdAt DateTime @default(now())
+  items     Item[]
+  notes     JournalNote[]
+}
+
+model Competency {
+  id        String   @id @default(cuid())
+  subject   String
+  code      String?
+  title     String
+  domain    String?
+  level     String?   // K/KH/SH/P
+  items     Item[]
+}
+
+model Item {
+  id            String   @id @default(cuid())
+  type          ItemType
+  subject       String
+  topic         String
+  competencyId  String?
+  competency    Competency? @relation(fields: [competencyId], references: [id])
+  bloom         String?
+  difficulty    String?
+  status        Status   @default(NEEDS_REVIEW)
+  createdById   String?
+  createdBy     User?    @relation(fields: [createdById], references: [id])
+  flashcard     Flashcard?
+  mcq           MCQ?
+  autoChecks    AutoChecks?
+  references    Reference[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([subject, topic, status])
+}
+
+model Flashcard {
+  id        String @id @default(cuid())
+  itemId    String @unique
+  item      Item   @relation(fields: [itemId], references: [id])
+  frontText String
+  backText  String
+  notes     String?
+}
+
+model MCQ {
+  id           String @id @default(cuid())
+  itemId       String @unique
+  item         Item   @relation(fields: [itemId], references: [id])
+  stem         String
+  options      Json
+  correctIndex Int
+  explanation  Json
+}
+
+model Reference {
+  id     String @id @default(cuid())
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id])
+  source String
+  page   String?
+}
+
+model AutoChecks {
+  id                 String @id @default(cuid())
+  itemId             String @unique
+  item               Item   @relation(fields: [itemId], references: [id])
+  groundednessScore  Int?
+  faithfulnessScore  Int?
+  taxonomyMatch      Boolean?
+  referenceCoverage  String?   // high|med|low
+  possibleDuplicates Json?     // string[]
+  claimsWithNumbers  Json?     // [{claim, supported_by[], contradicted_by[]}]
+}
+
+model JournalNote {
+  id       String   @id @default(cuid())
+  authorId String
+  author   User     @relation(fields: [authorId], references: [id])
+  date     DateTime @default(now())
+  text     String
+}
+
+10) API Design (REST, Next.js App Router)
+
+Auth: NextAuth email magic link; JWT sessions.
+
+10.1 Intake
+
+POST /api/intake/flashcardBody (JSON): { subject, topic, competency_tag?, bloom?, difficulty?, front_text, back_text, references: [{source, page?}] }Returns: { itemId } and populated autoChecks.
+
+POST /api/intake/mcqBody (JSON): { subject, topic, competency_tag?, bloom?, difficulty?, stem, options[], correct_index, explanation: { summary, references: [{source, page?}] } }Returns: { itemId } and autoChecks.
+
+10.2 Items
+
+GET /api/items?subject=&type=&status=&flag=Returns: list with chips + flags.
+
+GET /api/items/:idReturns: expanded detail (child + references + autoChecks + competency text if mapped).
+
+PATCH /api/items/:idBody examples:
+
+{ action: "request_changes", note: "Please fix % claim" }
+
+{ action: "publish" }
+
+{ action: "edit", patch: { back_text: "..." } }
+
+{ action: "remap_competency", competencyId: "..." }
+Server re‑runs auto‑checks on edit.
+
+10.3 Journal & Analytics
+
+POST /api/journal  → { text }GET /api/analytics → { throughput, qualityFlags, coverage }
+
+11) Frontend Pages & Components
+
+/intake — JSON textarea + form fields; Validation errors panel; Submit → navigate to Item Detail.
+
+/queue — Filters + Card grid (Chip, flags, scores); click → Item Detail.
+
+/item/[id] — Two‑pane; Action buttons; Auto‑checks panel; Evidence list; CBME panel.
+
+/journal — Today textarea + Save; history list.
+
+/analytics — Simple bar charts and chips.
+
+Components: Header, FilterBar, QueueCard, Section, Chip, Evidence, KeyValue, Bars.
+
+12) Non‑Functional Requirements
+
+Web Core: Next.js 14 (App Router), React 18, TypeScript, Tailwind.
+
+Server: Node 18+, API routes, Prisma ORM.
+
+DB: Postgres (N

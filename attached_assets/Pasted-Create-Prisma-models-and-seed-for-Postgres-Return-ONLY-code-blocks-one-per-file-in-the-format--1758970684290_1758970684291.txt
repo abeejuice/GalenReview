@@ -1,0 +1,123 @@
+Create Prisma models and seed for Postgres.
+
+Return ONLY code blocks, one per file, in the format:
+
+// path: <relative file path>
+<full file contents>
+
+Files to output:
+1) prisma/schema.prisma
+2) prisma/seed.ts
+
+Requirements for prisma/schema.prisma:
+- datasource: postgresql; env("DATABASE_URL")
+- generator: client
+- enums:
+  enum Role { CONTRIBUTOR REVIEWER }
+  enum ItemType { FLASHCARD MCQ }
+  enum Status { DRAFT NEEDS_REVIEW CHANGES_REQUESTED PUBLISHED }
+- models and relations exactly as below:
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(REVIEWER)
+  createdAt DateTime @default(now())
+  items     Item[]
+  notes     JournalNote[]
+}
+
+model Competency {
+  id        String   @id @default(cuid())
+  subject   String
+  code      String?
+  title     String
+  domain    String?
+  level     String?   // K/KH/SH/P
+  items     Item[]
+}
+
+model Item {
+  id            String   @id @default(cuid())
+  type          ItemType
+  subject       String
+  topic         String
+  competencyId  String?
+  competency    Competency? @relation(fields: [competencyId], references: [id])
+  bloom         String?
+  difficulty    String?
+  status        Status   @default(NEEDS_REVIEW)
+  createdById   String?
+  createdBy     User?    @relation(fields: [createdById], references: [id])
+  flashcard     Flashcard?
+  mcq           MCQ?
+  autoChecks    AutoChecks?
+  references    Reference[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([subject, topic, status])
+}
+
+model Flashcard {
+  id        String @id @default(cuid())
+  itemId    String @unique
+  item      Item   @relation(fields: [itemId], references: [id])
+  frontText String
+  backText  String
+  notes     String?
+}
+
+model MCQ {
+  id           String @id @default(cuid())
+  itemId       String @unique
+  item         Item   @relation(fields: [itemId], references: [id])
+  stem         String
+  options      Json
+  correctIndex Int
+  explanation  Json
+}
+
+model Reference {
+  id     String @id @default(cuid())
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id])
+  source String
+  page   String?
+}
+
+model AutoChecks {
+  id                 String @id @default(cuid())
+  itemId             String @unique
+  item               Item   @relation(fields: [itemId], references: [id])
+  groundednessScore  Int?
+  faithfulnessScore  Int?
+  taxonomyMatch      Boolean?
+  referenceCoverage  String?   // high|med|low
+  possibleDuplicates Json?     // string[]
+  claimsWithNumbers  Json?     // [{claim, supported_by[], contradicted_by[]}]
+}
+
+model JournalNote {
+  id       String   @id @default(cuid())
+  authorId String
+  author   User     @relation(fields: [authorId], references: [id])
+  date     DateTime @default(now())
+  text     String
+}
+
+Requirements for prisma/seed.ts:
+- Use PrismaClient.
+- Idempotent (use upsert).
+- Create one Reviewer user:
+  { email: "reviewer@example.com", name: "Reviewer One", role: "REVIEWER" }
+- Insert 2–3 Competencies (credible examples; e.g., Medicine/Anatomy).
+- Create 3 Items:
+  (1) Flashcard with a numeric claim (e.g., “PUD ≈75%…”) to simulate a conflict later.
+  (2) MCQ example (Thorax/trachea) with 4 options and explanation + references.
+  (3) Clean Flashcard (LGI causes) with proper references and no numbers.
+- For each item, create child record (Flashcard or MCQ) and at least one Reference (with source and page).
+- Console.log a short summary at the end.
+
+Do not include prose; only the two code blocks with // path headers.

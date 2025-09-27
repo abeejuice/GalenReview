@@ -1,0 +1,96 @@
+Add request-scoped logging and JSON helpers. Replace middleware to inject X-Request-ID and keep auth protection.
+
+Return ONLY code blocks, one per file:
+
+// path: src/lib/logger.ts
+export type LogLevel = 'debug'|'info'|'warn'|'error'
+
+function ts() {
+  return new Date().toISOString()
+}
+
+export function makeLogger(ctx?: { requestId?: string; path?: string; method?: string; user?: string|null }) {
+  function base(level: LogLevel, msg: string, extra?: Record<string, unknown>) {
+    const rec = {
+      t: ts(),
+      level,
+      msg,
+      requestId: ctx?.requestId || 'no-reqid',
+      path: ctx?.path,
+      method: ctx?.method,
+      user: ctx?.user ?? null,
+      ...extra,
+    }
+    // single-line JSON for easy ingestion
+    console.log(JSON.stringify(rec))
+  }
+  return {
+    debug: (m: string, e?: Record<string, unknown>) => base('debug', m, e),
+    info:  (m: string, e?: Record<string, unknown>) => base('info',  m, e),
+    warn:  (m: string, e?: Record<string, unknown>) => base('warn',  m, e),
+    error: (m: string, e?: Record<string, unknown>) => base('error', m, e),
+  }
+}
+
+// path: src/lib/api.ts
+import { NextResponse } from 'next/server'
+
+export function ok<T>(data: T, init?: number | ResponseInit) {
+  const status = typeof init === 'number' ? init : (init as ResponseInit | undefined)?.status ?? 200
+  return NextResponse.json({ ok: true, data }, { status })
+}
+
+export function fail(code: string, message: string, init?: number | ResponseInit, extra?: Record<string, unknown>) {
+  const status = typeof init === 'number' ? init : (init as ResponseInit | undefined)?.status ?? 400
+  return NextResponse.json({ ok: false, code, message, ...extra }, { status })
+}
+
+// path: src/middleware.ts
+import { withAuth } from 'next-auth/middleware'
+import { NextResponse } from 'next/server'
+
+export default withAuth(
+  function middleware(req) {
+    // Inject/propagate a request ID
+    const requestId = req.headers.get('x-request-id') ?? crypto.randomUUID()
+
+    const requestHeaders = new Headers(req.headers)
+    requestHeaders.set('x-request-id', requestId)
+
+    const res = NextResponse.next({
+      request: { headers: requestHeaders },
+    })
+
+    // Also expose it on the response for browser/trace correlation
+    res.headers.set('x-request-id', requestId)
+    return res
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => !!token,
+    },
+  }
+)
+
+export const config = {
+  matcher: [
+    // protect everything except these paths
+    '/((?!api/auth|sign-in|_next/static|_next/image|favicon.ico|api/health).*)',
+  ],
+}
+
+// path: src/app/api/health/route.ts
+import { NextResponse } from 'next/server'
+import { makeLogger } from '@/lib/logger'
+
+export async function GET(req: Request) {
+  const requestId = req.headers.get('x-request-id') || 'no-reqid'
+  const logger = makeLogger({ requestId, path: '/api/health', method: 'GET', user: null })
+  logger.info('health check')
+  return NextResponse.json({
+    ok: true,
+    time: new Date().toISOString(),
+    env: process.env.NODE_ENV,
+    requestId,
+  })
+}

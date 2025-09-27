@@ -1,0 +1,189 @@
+Create auto-checks utils and orchestrator.
+
+Return ONLY code blocks, one per file:
+
+// path: src/lib/autochecks/duplicates.ts
+import stringSimilarity from 'string-similarity'
+import { prisma } from '@/lib/db'
+import { ItemType } from '@prisma/client'
+
+function normalize(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9\s]/gi, ' ').replace(/\s+/g, ' ').trim()
+}
+
+export async function findSimilarItems(itemId: string, threshold = 0.85): Promise<string[]> {
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    include: { flashcard: true, mcq: true },
+  })
+  if (!item) return []
+
+  const text = item.type === 'FLASHCARD'
+    ? item.flashcard?.frontText ?? ''
+    : item.mcq?.stem ?? ''
+
+  const base = normalize(text)
+  if (!base) return []
+
+  const peers = await prisma.item.findMany({
+    where: { topic: item.topic, id: { not: item.id } },
+    include: { flashcard: true, mcq: true },
+  })
+
+  const matches: string[] = []
+  for (const p of peers) {
+    const peerText = p.type === 'FLASHCARD' ? (p.flashcard?.frontText ?? '') : (p.mcq?.stem ?? '')
+    const score = stringSimilarity.compareTwoStrings(base, normalize(peerText))
+    if (score >= threshold) matches.push(p.id)
+  }
+  return matches
+}
+
+// path: src/lib/autochecks/numbers.ts
+import { prisma } from '@/lib/db'
+
+export function extractClaims(text: string): string[] {
+  if (!text) return []
+  const re = /\b(?:≈|~)?\d+(?:\.\d+)?\s*(?:%|percent|cases?|cm|mm|mg|years?|months?|days?|hours?|minutes?|seconds?|kg|g|ml|l)\b/gi
+  return text.match(re) ?? []
+}
+
+export async function findConflicts(itemId: string): Promise<{ claim: string; conflictingItemIds: string[] }[]> {
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    include: { flashcard: true, mcq: true },
+  })
+  if (!item) return []
+
+  const text = item.type === 'FLASHCARD'
+    ? `${item.flashcard?.frontText ?? ''} ${item.flashcard?.backText ?? ''}`
+    : `${item.mcq?.stem ?? ''} ${(item.mcq as any)?.explanation?.summary ?? ''}`
+
+  const claims = Array.from(new Set(extractClaims(text)))
+  if (claims.length === 0) return []
+
+  const peers = await prisma.item.findMany({
+    where: { topic: item.topic, id: { not: item.id } },
+    include: { flashcard: true, mcq: true },
+  })
+
+  const results: { claim: string; conflictingItemIds: string[] }[] = []
+  for (const claim of claims) {
+    const conflictingItemIds: string[] = []
+    for (const p of peers) {
+      const pText = p.type === 'FLASHCARD'
+        ? `${p.flashcard?.frontText ?? ''} ${p.flashcard?.backText ?? ''}`
+        : `${p.mcq?.stem ?? ''} ${(p.mcq as any)?.explanation?.summary ?? ''}`
+      const peerClaims = new Set(extractClaims(pText))
+      // simple conflict heuristic: peer has any different numeric phrase
+      if (peerClaims.size > 0 && !peerClaims.has(claim)) conflictingItemIds.push(p.id)
+    }
+    if (conflictingItemIds.length) results.push({ claim, conflictingItemIds })
+  }
+  return results
+}
+
+export async function referenceCoverage(itemId: string): Promise<'low'|'med'|'high'> {
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    include: { flashcard: true, mcq: true, references: true },
+  })
+  if (!item) return 'med'
+  const text = item.type === 'FLASHCARD'
+    ? `${item.flashcard?.frontText ?? ''} ${item.flashcard?.backText ?? ''}`
+    : `${item.mcq?.stem ?? ''} ${(item.mcq as any)?.explanation?.summary ?? ''}`
+
+  const hasNumbers = extractClaims(text).length > 0
+  const hasPage = item.references.some(r => (r.page ?? '').trim().length > 0)
+
+  if (hasNumbers && hasPage) return 'high'
+  if (hasNumbers && !hasPage) return 'low'
+  return 'med'
+}
+
+// path: src/lib/autochecks/bloom.ts
+const BLOOM_MAP: Record<string, 'Remember'|'Understand'|'Apply'|'Analyze'|'Evaluate'|'Create'> = {
+  define: 'Remember',
+  list: 'Remember',
+  identify: 'Remember',
+  describe: 'Understand',
+  explain: 'Understand',
+  discuss: 'Understand',
+  apply: 'Apply',
+  calculate: 'Apply',
+  analyze: 'Analyze',
+  compare: 'Analyze',
+  evaluate: 'Evaluate',
+  design: 'Create',
+  create: 'Create',
+}
+
+export function guessBloom(text: string): 'Remember'|'Understand'|'Apply'|'Analyze'|'Evaluate'|'Create' {
+  const firstWord = (text || '').trim().toLowerCase().split(/\s+/)[0] ?? ''
+  return BLOOM_MAP[firstWord] ?? 'Understand'
+}
+
+// path: src/lib/autochecks/competency.ts
+const MAP: Array<{ key: RegExp; suggestions: string[] }> = [
+  { key: /ugi|upper gi|peptic|bleed/i, suggestions: ['Enumerate aetiology of UGIB/LGIB', 'Outline initial management of UGIB', 'List risk factors for PUD'] },
+  { key: /lgi|lower gi|diverticul|angiodyspl|bleed/i, suggestions: ['Enumerate causes of LGIB', 'Differentiate sources of LGIB', 'Indications for colonoscopy in bleeding'] },
+  { key: /trachea|bronch|thorax/i, suggestions: ['Identify, draw and label a slide of trachea and lung', 'Describe carinal level and relations', 'Explain airway epithelium'] },
+]
+
+export function suggestCompetencies(subject: string, topic: string, text: string): string[] {
+  const hay = `${subject} ${topic} ${text}`
+  for (const row of MAP) {
+    if (row.key.test(hay)) return row.suggestions.slice(0, 3)
+  }
+  return []
+}
+
+// path: src/lib/autochecks/run.ts
+import { prisma } from '@/lib/db'
+import { findSimilarItems } from './duplicates'
+import { findConflicts, referenceCoverage } from './numbers'
+import { guessBloom } from './bloom'
+import { suggestCompetencies } from './competency'
+
+export async function runAutoChecks(itemId: string): Promise<void> {
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    include: { flashcard: true, mcq: true, references: true, autoChecks: true },
+  })
+  if (!item) return
+
+  const contentText = item.type === 'FLASHCARD'
+    ? `${item.flashcard?.frontText ?? ''} ${item.flashcard?.backText ?? ''}`
+    : `${item.mcq?.stem ?? ''} ${(item.mcq as any)?.explanation?.summary ?? ''}`
+
+  const duplicates = await findSimilarItems(itemId, 0.85)
+  const conflicts = await findConflicts(itemId)
+  const coverage = await referenceCoverage(itemId)
+  const bloomGuess = guessBloom(item.type === 'FLASHCARD' ? (item.flashcard?.frontText ?? '') : (item.mcq?.stem ?? ''))
+  const compSuggest = suggestCompetencies(item.subject, item.topic, contentText)
+
+  const groundednessScore = coverage === 'high' ? 5 : coverage === 'med' ? 4 : 2
+  const faithfulnessScore = conflicts.length ? 3 : 5
+  const taxonomyMatch = item.bloom ? item.bloom === bloomGuess : true
+
+  await prisma.autoChecks.upsert({
+    where: { itemId },
+    update: {
+      groundednessScore,
+      faithfulnessScore,
+      taxonomyMatch,
+      referenceCoverage: coverage,
+      possibleDuplicates: duplicates,
+      claimsWithNumbers: conflicts,
+    },
+    create: {
+      itemId,
+      groundednessScore,
+      faithfulnessScore,
+      taxonomyMatch,
+      referenceCoverage: coverage,
+      possibleDuplicates: duplicates,
+      claimsWithNumbers: conflicts,
+    },
+  })
+}
