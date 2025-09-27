@@ -2,7 +2,12 @@ import QueueCard from '@/components/QueueCard'
 
 async function getItems() {
   try {
-    const response = await fetch('http://localhost:5000/api/items', {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      process.env.NEXTAUTH_URL ??
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+
+    const response = await fetch(`${baseUrl}/api/items`, {
       cache: 'no-store'
     })
     if (!response.ok) {

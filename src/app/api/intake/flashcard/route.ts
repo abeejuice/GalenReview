@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import { db } from '@/lib/db'
+import { db, isDatabaseConfigured } from '@/lib/db'
 import { FlashcardIntakeSchema } from '@/lib/types'
 import { runAutoChecks } from '@/lib/autochecks/run'
+import { addDevFlashcard } from '@/lib/dev-store'
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,6 +17,22 @@ export async function POST(request: NextRequest) {
     const validatedData = FlashcardIntakeSchema.parse(body)
 
     // Create item with flashcard and references
+    if (!isDatabaseConfigured || !db) {
+      const item = addDevFlashcard({
+        subject: validatedData.subject,
+        topic: validatedData.topic,
+        competencyId: validatedData.competencyId ?? undefined,
+        userId: session.user.id,
+        flashcard: {
+          question: validatedData.flashcard.question,
+          answer: validatedData.flashcard.answer,
+        },
+        references: validatedData.references,
+      })
+
+      return NextResponse.json({ itemId: item.id })
+    }
+
     const item = await db.item.create({
       data: {
         type: 'FLASHCARD',

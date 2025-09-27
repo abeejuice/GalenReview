@@ -7,14 +7,20 @@ import { useRouter } from 'next/navigation'
 export default function SignInPage() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setErrorMessage('')
 
     try {
-      const useDevCredentials = process.env.NEXT_PUBLIC_USE_DEV_CREDENTIALS === 'true'
+      const useDevCredentialsEnv = process.env.NEXT_PUBLIC_USE_DEV_CREDENTIALS
+      const useDevCredentials =
+        useDevCredentialsEnv !== undefined
+          ? useDevCredentialsEnv === 'true'
+          : process.env.NODE_ENV !== 'production'
       
       if (useDevCredentials) {
         const result = await signIn('credentials', {
@@ -22,7 +28,12 @@ export default function SignInPage() {
           redirect: false,
         })
         if (result?.ok) {
-          router.push('/queue')
+          router.replace('/queue')
+          router.refresh()
+        } else if (result?.error) {
+          setErrorMessage(result.error)
+        } else {
+          setErrorMessage('Unable to complete sign in.')
         }
       } else {
         const result = await signIn('email', {
@@ -31,10 +42,15 @@ export default function SignInPage() {
         })
         if (result?.ok) {
           router.push('/check-email')
+        } else if (result?.error) {
+          setErrorMessage(result.error)
+        } else {
+          setErrorMessage('Unable to start email sign in flow.')
         }
       }
     } catch (error) {
       console.error('Sign in error:', error)
+      setErrorMessage('Unexpected error. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -73,6 +89,11 @@ export default function SignInPage() {
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
+          {errorMessage && (
+            <div className="text-sm text-red-600 text-center">
+              {errorMessage}
+            </div>
+          )}
         </form>
       </div>
     </div>

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-import { db } from '@/lib/db'
+import { db, isDatabaseConfigured } from '@/lib/db'
+import { getDevStore } from '@/lib/dev-store'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,21 +23,28 @@ export async function GET(request: NextRequest) {
     if (type && type !== 'all') where.type = type
     if (status && status !== 'all') where.status = status
 
-    const items = await db.item.findMany({
-      where,
-      include: {
-        flashcard: true,
-        mcq: true,
-        references: true,
-        autoChecks: true,
-        competency: true,
-        user: {
-          select: { email: true, name: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    })
+    const items = isDatabaseConfigured && db
+      ? await db.item.findMany({
+          where,
+          include: {
+            flashcard: true,
+            mcq: true,
+            references: true,
+            autoChecks: true,
+            competency: true,
+            user: {
+              select: { email: true, name: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        })
+      : getDevStore().items.filter((item) => {
+          if (subject && subject !== 'all' && item.subject !== subject) return false
+          if (type && type !== 'all' && item.type !== type) return false
+          if (status && status !== 'all' && item.status !== status) return false
+          return true
+        })
 
     // Filter by flags if needed
     let filteredItems = items

@@ -1,10 +1,14 @@
-import { db } from '@/lib/db'
+import { db, isDatabaseConfigured } from '@/lib/db'
 import { findSimilarItems } from './duplicates'
 import { extractClaims, findConflicts, referenceCoverage } from './numbers'
 import { guessBloom } from './bloom'
 import { suggestCompetencies } from './competency'
 
 export async function runAutoChecks(itemId: string) {
+  if (!isDatabaseConfigured || !db) {
+    return
+  }
+
   try {
     const item = await db.item.findUnique({
       where: { id: itemId },
