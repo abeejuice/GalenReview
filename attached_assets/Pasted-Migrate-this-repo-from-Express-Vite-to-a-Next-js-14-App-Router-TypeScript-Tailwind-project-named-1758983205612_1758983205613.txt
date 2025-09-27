@@ -1,0 +1,135 @@
+Migrate this repo from Express+Vite to a Next.js 14 (App Router, TypeScript, Tailwind) project named "galen-reviewer".
+
+IMPORTANT:
+- REMOVE legacy folders/files: `server/`, `client/`, `drizzle.config.*`, any `vite.*`, and any Express-specific files.
+- CREATE the Next.js app structure and files listed below.
+- Return ONLY code blocks in the format:
+// path: <relative path>
+// <full file contents>
+- If a file already exists with the same path, REPLACE it completely.
+- Do not include prose outside the code blocks.
+
+Create/replace these files:
+
+1) package.json
+   - name: "galen-reviewer"
+   - scripts: dev/build/start/lint/typecheck + prisma scripts (generate/migrate/seed)
+   - deps: next@14.x, react, react-dom, tailwindcss, postcss, autoprefixer, typescript, @prisma/client, prisma, next-auth, nodemailer, zod, string-similarity, dotenv, ts-node
+   - devDeps: eslint, eslint-config-next
+
+2) next.config.js
+   - App Router enabled (Next 14 defaults are fine)
+   - reactStrictMode: true
+
+3) tsconfig.json
+   - baseUrl: "src"
+   - paths alias: "@/*": ["*"]
+   - strict: true
+   - jsx: preserve
+   - moduleResolution: bundler
+   - include src + next-env
+
+4) tailwind.config.js
+   - content: ['./src/**/*.{js,ts,jsx,tsx,mdx}']
+   - simple theme extension
+5) postcss.config.js
+6) src/app/globals.css
+   - Tailwind base/components/utilities + simple base vars
+
+7) .env.example
+   - DATABASE_URL (postgres example)
+   - NEXTAUTH_SECRET
+   - NEXTAUTH_URL
+   - EMAIL_SERVER, EMAIL_FROM
+   - NEXT_PUBLIC_USE_DEV_CREDENTIALS="true"
+
+8) prisma/schema.prisma
+   - provider: postgresql
+   - models/enums:
+     Role { CONTRIBUTOR, REVIEWER }
+     ItemType { FLASHCARD, MCQ }
+     Status { DRAFT, NEEDS_REVIEW, CHANGES_REQUESTED, PUBLISHED }
+     User, Competency, Item, Flashcard, MCQ, Reference, AutoChecks, JournalNote
+   - relationships exactly as discussed (Item has one Flashcard or one MCQ; AutoChecks linked by itemId; references table; journal notes)
+
+9) prisma/seed.ts
+   - seed one reviewer user (reviewer@example.com)
+   - three competencies (anatomy/physiology/pathology) with simple IDs
+   - create 3 items (1 flashcard with numeric claim + ref, 1 MCQ + ref, 1 clean flashcard + ref)
+
+10) src/lib/db.ts
+   - PrismaClient singleton with globalThis caching (Next.js dev safe)
+   - log: ['query'] is OK
+
+11) src/app/api/auth/[...nextauth]/route.ts
+   - NextAuth with:
+     * EmailProvider when EMAIL_SERVER is set
+     * DEV-only CredentialsProvider when EMAIL_SERVER NOT set (NODE_ENV!=='production')
+     * JWT sessions; expose {id,email,role} into token and session; default role = 'REVIEWER'
+   - export { GET, POST } handler
+
+12) src/app/(auth)/sign-in/page.tsx  (client)
+   - email box + submit
+   - if NEXT_PUBLIC_USE_DEV_CREDENTIALS === 'true' -> signIn('credentials'), else signIn('email')
+
+13) src/middleware.ts
+   - Protect all routes except: ^/api/auth, ^/sign-in, ^/_next, ^/favicon.ico, ^/api/health
+   - Also inject/propagate an X-Request-ID header (use crypto.randomUUID())
+
+14) src/app/api/health/route.ts
+   - return { ok:true, time, env, requestId }
+
+15) src/components/SessionProvider.tsx (client)
+   - wrapper around next-auth/react SessionProvider
+
+16) src/components/Header.tsx (client)
+   - top bar with app title, nav links to /intake, /queue, /journal, /analytics when signed in
+   - right side shows user email + role + sign out
+
+17) src/app/layout.tsx (server)
+   - import globals.css
+   - getServerSession(authOptions)
+   - wrap <SessionProvider> and render <Header/> and {children}
+
+18) src/app/page.tsx
+   - redirect('/queue')
+
+19) src/lib/types.ts
+   - export Zod schemas FlashcardIntakeSchema and McqIntakeSchema
+   - helpers: extractNumericClaims(text), requiresPageReference(text)
+   - enforce: numeric claims require a reference with a page; MCQ options >=4 unique; correct_index in range
+
+20) src/lib/autochecks/*
+   a) duplicates.ts — findSimilarItems(itemId, threshold=0.85) using string-similarity; normalize text
+   b) numbers.ts — extractClaims(text), findConflicts(itemId), referenceCoverage(itemId)
+   c) bloom.ts — guessBloom(text) from a verb map
+   d) competency.ts — suggestCompetencies(subject, topic, text) via simple regex map
+   e) run.ts — runAutoChecks(itemId): compute duplicates/conflicts/coverage/bloom/competency -> upsert AutoChecks
+
+21) API routes:
+   a) src/app/api/intake/flashcard/route.ts — POST: validate(FlashcardIntakeSchema), create Item+Flashcard+References (status NEEDS_REVIEW), runAutoChecks -> { itemId }
+   b) src/app/api/intake/mcq/route.ts — POST: validate(McqIntakeSchema), create Item+MCQ+References, runAutoChecks -> { itemId }
+   c) src/app/api/items/route.ts — GET list with filters subject?, type?, status?, flag? ('duplicate'|'conflict'|'lowcoverage'); return compact cards
+   d) src/app/api/items/[id]/route.ts — GET full item; PATCH actions: request_changes, publish, edit (child+refs), remap_competency; re-run autoChecks on edit
+   e) src/app/api/journal/route.ts — GET latest 30; POST create note
+   f) src/app/api/analytics/route.ts — GET throughput(7d), quality flags summary, coverageBySubject
+
+22) Minimal UI components:
+   a) src/components/Chip.tsx, Section.tsx, FilterBar.tsx, QueueCard.tsx, Evidence.tsx, Bars.tsx
+   b) src/components/ToastProvider.tsx, ErrorBoundary.tsx, Spinner.tsx
+   c) src/styles/toast.css (slide-in-right keyframes)
+
+23) Pages:
+   a) src/app/intake/page.tsx (client): JSON textarea; Validate (zod), Submit (POST), Clear; toasts and spinner
+   b) src/app/queue/page.tsx (server): uses FilterBar; fetch /api/items; grid of QueueCard
+   c) src/app/item/[id]/page.tsx (client for simplicity): fetch item; show content + auto-checks + Evidence; actions: request_changes, publish, edit (quick), remap competency
+   d) src/app/journal/page.tsx (client): textarea + Save; list notes
+   e) src/app/analytics/page.tsx (client): fetch /api/analytics; render Bars
+
+Return all files above with complete code. Do not reference the old Express/Vite setup. This project must run with:
+- npm install
+- cp .env.example .env  (fill secrets)
+- npx prisma generate
+- npx prisma migrate dev --name init
+- npm run prisma:seed
+- npm run dev
