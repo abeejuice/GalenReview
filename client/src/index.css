@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(222.2 84% 4.9%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(222.2 84% 4.9%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(222.2 84% 4.9%);
+  --primary: hsl(221.2 83.2% 53.3%);
+  --primary-foreground: hsl(210 40% 98%);
+  --secondary: hsl(210 40% 96%);
+  --secondary-foreground: hsl(222.2 47.4% 11.2%);
+  --muted: hsl(210 40% 96%);
+  --muted-foreground: hsl(215.4 16.3% 46.9%);
+  --accent: hsl(210 40% 96%);
+  --accent-foreground: hsl(222.2 47.4% 11.2%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(210 40% 98%);
+  --border: hsl(214.3 31.8% 91.4%);
+  --input: hsl(214.3 31.8% 91.4%);
+  --ring: hsl(221.2 83.2% 53.3%);
+  --chart-1: hsl(221.2 83.2% 53.3%);
+  --chart-2: hsl(142.1 76.2% 36.3%);
+  --chart-3: hsl(38 92% 50%);
+  --chart-4: hsl(346.8 77.2% 49.8%);
+  --chart-5: hsl(288.6 92.5% 64.5%);
+  --sidebar: hsl(0 0% 100%);
+  --sidebar-foreground: hsl(222.2 84% 4.9%);
+  --sidebar-primary: hsl(221.2 83.2% 53.3%);
+  --sidebar-primary-foreground: hsl(210 40% 98%);
+  --sidebar-accent: hsl(210 40% 96%);
+  --sidebar-accent-foreground: hsl(222.2 47.4% 11.2%);
+  --sidebar-border: hsl(214.3 31.8% 91.4%);
+  --sidebar-ring: hsl(221.2 83.2% 53.3%);
+  --font-sans: Inter, system-ui, -apple-system, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --radius: 0.5rem;
+  --shadow-2xs: 0px 1px 2px 0px hsl(221.2 83.2% 53.3% / 0.05);
+  --shadow-xs: 0px 1px 2px 0px hsl(221.2 83.2% 53.3% / 0.05);
+  --shadow-sm: 0px 1px 2px 0px hsl(221.2 83.2% 53.3% / 0.05), 0px 1px 3px 0px hsl(221.2 83.2% 53.3% / 0.10);
+  --shadow: 0px 1px 2px 0px hsl(221.2 83.2% 53.3% / 0.05), 0px 1px 3px 0px hsl(221.2 83.2% 53.3% / 0.10);
+  --shadow-md: 0px 3px 6px 0px hsl(221.2 83.2% 53.3% / 0.07), 0px 2px 4px 0px hsl(221.2 83.2% 53.3% / 0.06);
+  --shadow-lg: 0px 10px 15px -3px hsl(221.2 83.2% 53.3% / 0.10), 0px 4px 6px -2px hsl(221.2 83.2% 53.3% / 0.05);
+  --shadow-xl: 0px 20px 25px -5px hsl(221.2 83.2% 53.3% / 0.10), 0px 10px 10px -5px hsl(221.2 83.2% 53.3% / 0.04);
+  --shadow-2xl: 0px 25px 50px -12px hsl(221.2 83.2% 53.3% / 0.25);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+.dark {
+  --background: hsl(222.2 84% 4.9%);
+  --foreground: hsl(210 40% 98%);
+  --card: hsl(222.2 84% 4.9%);
+  --card-foreground: hsl(210 40% 98%);
+  --popover: hsl(222.2 84% 4.9%);
+  --popover-foreground: hsl(210 40% 98%);
+  --primary: hsl(217.2 91.2% 59.8%);
+  --primary-foreground: hsl(222.2 84% 4.9%);
+  --secondary: hsl(217.2 32.6% 17.5%);
+  --secondary-foreground: hsl(210 40% 98%);
+  --muted: hsl(217.2 32.6% 17.5%);
+  --muted-foreground: hsl(215 20.2% 65.1%);
+  --accent: hsl(217.2 32.6% 17.5%);
+  --accent-foreground: hsl(210 40% 98%);
+  --destructive: hsl(0 62.8% 30.6%);
+  --destructive-foreground: hsl(210 40% 98%);
+  --border: hsl(217.2 32.6% 17.5%);
+  --input: hsl(217.2 32.6% 17.5%);
+  --ring: hsl(224.3 76.3% 68%);
+  --chart-1: hsl(217.2 91.2% 59.8%);
+  --chart-2: hsl(142.1 70.6% 45.3%);
+  --chart-3: hsl(38 92% 50%);
+  --chart-4: hsl(346.8 77.2% 49.8%);
+  --chart-5: hsl(288.6 92.5% 64.5%);
+  --sidebar: hsl(222.2 84% 4.9%);
+  --sidebar-foreground: hsl(210 40% 98%);
+  --sidebar-primary: hsl(217.2 91.2% 59.8%);
+  --sidebar-primary-foreground: hsl(222.2 84% 4.9%);
+  --sidebar-accent: hsl(217.2 32.6% 17.5%);
+  --sidebar-accent-foreground: hsl(210 40% 98%);
+  --sidebar-border: hsl(217.2 32.6% 17.5%);
+  --sidebar-ring: hsl(224.3 76.3% 68%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+/* Custom utility classes for medical dashboard */
+.chip {
+  @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.chip-primary {
+  @apply bg-primary bg-opacity-10 text-primary;
+}
+
+.chip-secondary {
+  @apply bg-muted text-muted-foreground;
+}
+
+.chip-success {
+  @apply bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400;
+}
+
+.chip-warning {
+  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400;
+}
+
+.chip-destructive {
+  @apply bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400;
+}
+
+/* Progress bar animations */
+.progress-bar {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Card hover effects */
+.queue-card {
+  @apply transition-all duration-200 ease-in-out hover:shadow-lg hover:-translate-y-0.5;
+}
+
+/* Focus states for accessibility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+/* Loading states */
+.loading-shimmer {
+  @apply animate-pulse bg-gradient-to-r from-muted via-background to-muted bg-[length:200%_100%];
+  animation: shimmer 1.5s infinite linear;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
