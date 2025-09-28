@@ -1,0 +1,52 @@
+{
+  "test_plan": {
+    "project_name": "GalenAI Reviewer Dashboard",
+    "test_type": "frontend",
+    "base_url": "http://localhost:3000",
+    "test_cases": [
+      {
+        "id": "homepage_load",
+        "name": "Homepage Loads",
+        "description": "Test that the homepage loads and redirects to sign-in",
+        "url": "/",
+        "expected_elements": ["Sign in form"],
+        "expected_redirect": "/sign-in"
+      },
+      {
+        "id": "signin_page",
+        "name": "Sign-in Page",
+        "description": "Test sign-in page loads correctly",
+        "url": "/sign-in",
+        "expected_elements": ["Email input", "Sign in button"]
+      },
+      {
+        "id": "queue_page",
+        "name": "Review Queue Page",
+        "description": "Test queue page loads with items",
+        "url": "/queue",
+        "expected_elements": ["Review Queue heading", "Filter options", "Item cards"]
+      },
+      {
+        "id": "analytics_page",
+        "name": "Analytics Page",
+        "description": "Test analytics page loads with metrics",
+        "url": "/analytics",
+        "expected_elements": ["Review Analytics heading", "Metrics cards", "Charts"]
+      },
+      {
+        "id": "journal_page",
+        "name": "Journal Page",
+        "description": "Test journal page loads with notes",
+        "url": "/journal",
+        "expected_elements": ["Journal heading", "Note form", "Note history"]
+      },
+      {
+        "id": "intake_page",
+        "name": "Intake Page",
+        "description": "Test intake page loads with forms",
+        "url": "/intake",
+        "expected_elements": ["Intake heading", "Flashcard form", "MCQ form"]
+      }
+    ]
+  }
+}

@@ -6,6 +6,7 @@ export async function extractClaims(text: string): Promise<string[]> {
 }
 
 export async function findConflicts(itemId: string): Promise<string[]> {
+  if (!db) return []
   try {
     const item = await db.item.findUnique({
       where: { id: itemId },
@@ -44,6 +45,7 @@ export async function findConflicts(itemId: string): Promise<string[]> {
 }
 
 export async function referenceCoverage(itemId: string): Promise<number> {
+  if (!db) return 1.0
   try {
     const item = await db.item.findUnique({
       where: { id: itemId },

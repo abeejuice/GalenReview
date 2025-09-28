@@ -1,0 +1,15 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "executionArgs": {
+    "projectName": "GalenReviewer",
+    "projectPath": "/Users/apple/Downloads/GalenReviewer 2",
+    "testIds": [],
+    "additionalInstruction": "Run comprehensive backend testing for the GalenAI Reviewer Dashboard API endpoints including authentication, CRUD operations, data validation, and error handling",
+    "envs": {
+      "API_KEY": ""
+    }
+  }
+}

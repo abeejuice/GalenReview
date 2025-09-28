@@ -1,0 +1,245 @@
+{
+  "test_plan": {
+    "project_name": "GalenAI Reviewer Dashboard",
+    "test_type": "backend",
+    "base_url": "http://localhost:3000",
+    "test_cases": [
+      {
+        "id": "health_check",
+        "name": "Health Check Endpoint",
+        "description": "Test the health check endpoint to ensure server is running",
+        "endpoint": "/api/health",
+        "method": "GET",
+        "expected_status": 200,
+        "expected_response": {
+          "ok": true,
+          "env": "development"
+        }
+      },
+      {
+        "id": "items_get",
+        "name": "Get Items List",
+        "description": "Test retrieving all items from the queue",
+        "endpoint": "/api/items",
+        "method": "GET",
+        "expected_status": 200,
+        "expected_response_type": "array"
+      },
+      {
+        "id": "items_filter_subject",
+        "name": "Filter Items by Subject",
+        "description": "Test filtering items by subject parameter",
+        "endpoint": "/api/items?subject=Cardiology",
+        "method": "GET",
+        "expected_status": 200,
+        "expected_response_type": "array"
+      },
+      {
+        "id": "items_filter_type",
+        "name": "Filter Items by Type",
+        "description": "Test filtering items by type (FLASHCARD or MCQ)",
+        "endpoint": "/api/items?type=FLASHCARD",
+        "method": "GET",
+        "expected_status": 200,
+        "expected_response_type": "array"
+      },
+      {
+        "id": "items_filter_status",
+        "name": "Filter Items by Status",
+        "description": "Test filtering items by status",
+        "endpoint": "/api/items?status=NEEDS_REVIEW",
+        "method": "GET",
+        "expected_status": 200,
+        "expected_response_type": "array"
+      },
+      {
+        "id": "items_filter_flag",
+        "name": "Filter Items by Quality Flag",
+        "description": "Test filtering items by quality flags",
+        "endpoint": "/api/items?flag=duplicate",
+        "method": "GET",
+        "expected_status": 200,
+        "expected_response_type": "array"
+      },
+      {
+        "id": "item_detail",
+        "name": "Get Individual Item",
+        "description": "Test retrieving a specific item by ID",
+        "endpoint": "/api/items/1ece7bea-5e32-4ff9-804c-bc2f2f1529a9",
+        "method": "GET",
+        "expected_status": 200,
+        "expected_response_type": "object"
+      },
+      {
+        "id": "item_update_status",
+        "name": "Update Item Status",
+        "description": "Test updating an item's status",
+        "endpoint": "/api/items/1ece7bea-5e32-4ff9-804c-bc2f2f1529a9",
+        "method": "PATCH",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "status": "PUBLISHED"
+        },
+        "expected_status": 200
+      },
+      {
+        "id": "analytics_get",
+        "name": "Get Analytics Data",
+        "description": "Test retrieving analytics and metrics",
+        "endpoint": "/api/analytics",
+        "method": "GET",
+        "expected_status": 200,
+        "expected_response_type": "object"
+      },
+      {
+        "id": "journal_get",
+        "name": "Get Journal Notes",
+        "description": "Test retrieving journal notes",
+        "endpoint": "/api/journal",
+        "method": "GET",
+        "expected_status": 200,
+        "expected_response_type": "array"
+      },
+      {
+        "id": "journal_create",
+        "name": "Create Journal Note",
+        "description": "Test creating a new journal note",
+        "endpoint": "/api/journal",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "content": "Test journal note for backend testing"
+        },
+        "expected_status": 200
+      },
+      {
+        "id": "flashcard_create",
+        "name": "Create Flashcard",
+        "description": "Test creating a new flashcard",
+        "endpoint": "/api/intake/flashcard",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "subject": "Test Subject",
+          "topic": "Test Topic",
+          "question": "What is the test question?",
+          "answer": "This is the test answer",
+          "competencyId": "comp-1",
+          "references": [
+            {
+              "title": "Test Reference",
+              "page": "123"
+            }
+          ]
+        },
+        "expected_status": 200
+      },
+      {
+        "id": "mcq_create",
+        "name": "Create MCQ",
+        "description": "Test creating a new multiple choice question",
+        "endpoint": "/api/intake/mcq",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "subject": "Test Subject",
+          "topic": "Test MCQ Topic",
+          "question": "What is the correct answer?",
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "correctIndex": 0,
+          "explanation": "This is the explanation",
+          "competencyId": "comp-1",
+          "references": [
+            {
+              "title": "Test MCQ Reference",
+              "page": "456"
+            }
+          ]
+        },
+        "expected_status": 200
+      },
+      {
+        "id": "auth_providers",
+        "name": "Get Auth Providers",
+        "description": "Test authentication providers endpoint",
+        "endpoint": "/api/auth/providers",
+        "method": "GET",
+        "expected_status": 200,
+        "expected_response_type": "object"
+      },
+      {
+        "id": "auth_csrf",
+        "name": "Get CSRF Token",
+        "description": "Test CSRF token endpoint",
+        "endpoint": "/api/auth/csrf",
+        "method": "GET",
+        "expected_status": 200,
+        "expected_response_type": "object"
+      },
+      {
+        "id": "auth_session",
+        "name": "Get Session",
+        "description": "Test session endpoint",
+        "endpoint": "/api/auth/session",
+        "method": "GET",
+        "expected_status": 200,
+        "expected_response_type": "object"
+      },
+      {
+        "id": "invalid_endpoint",
+        "name": "Test Invalid Endpoint",
+        "description": "Test 404 handling for invalid endpoints",
+        "endpoint": "/api/invalid",
+        "method": "GET",
+        "expected_status": 404
+      },
+      {
+        "id": "items_invalid_id",
+        "name": "Test Invalid Item ID",
+        "description": "Test handling of invalid item IDs",
+        "endpoint": "/api/items/invalid-id",
+        "method": "GET",
+        "expected_status": 404
+      },
+      {
+        "id": "journal_invalid_data",
+        "name": "Test Invalid Journal Data",
+        "description": "Test validation of journal note creation",
+        "endpoint": "/api/journal",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "content": ""
+        },
+        "expected_status": 400
+      },
+      {
+        "id": "flashcard_invalid_data",
+        "name": "Test Invalid Flashcard Data",
+        "description": "Test validation of flashcard creation",
+        "endpoint": "/api/intake/flashcard",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "subject": "",
+          "topic": "",
+          "question": "",
+          "answer": ""
+        },
+        "expected_status": 400
+      }
+    ]
+  }
+}

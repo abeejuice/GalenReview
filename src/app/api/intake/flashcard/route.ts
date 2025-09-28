@@ -1,6 +1,9 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { db, isDatabaseConfigured } from '@/lib/db'
 import { FlashcardIntakeSchema } from '@/lib/types'
 import { runAutoChecks } from '@/lib/autochecks/run'

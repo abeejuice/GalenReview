@@ -1,0 +1,111 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "Next.js 14",
+    "React 18",
+    "Tailwind CSS",
+    "Prisma ORM",
+    "PostgreSQL",
+    "NextAuth.js",
+    "Radix UI",
+    "TanStack Query"
+  ],
+  "features": [
+    {
+      "name": "Authentication System",
+      "description": "NextAuth.js based authentication with development credentials and email providers",
+      "files": [
+        "src/lib/auth.ts",
+        "src/app/(auth)/sign-in/page.tsx",
+        "src/app/api/auth/[...nextauth]/route.ts",
+        "src/middleware.ts"
+      ]
+    },
+    {
+      "name": "Review Queue Management",
+      "description": "Main dashboard for reviewing flashcards and MCQs with filtering and status management",
+      "files": [
+        "src/app/queue/page.tsx",
+        "src/components/QueueCard.tsx",
+        "src/components/QueueSummary.tsx",
+        "src/components/FilterBar.tsx"
+      ]
+    },
+    {
+      "name": "Item Detail View",
+      "description": "Detailed view for individual items with review actions and auto-checks",
+      "files": [
+        "src/app/item/[id]/page.tsx",
+        "src/components/ItemActions.tsx"
+      ]
+    },
+    {
+      "name": "Content Intake System",
+      "description": "Form for submitting new flashcards and MCQs with validation",
+      "files": [
+        "src/app/intake/page.tsx",
+        "src/app/api/intake/flashcard/route.ts",
+        "src/app/api/intake/mcq/route.ts"
+      ]
+    },
+    {
+      "name": "Journal System",
+      "description": "Note-taking system for reviewers to track progress and observations",
+      "files": [
+        "src/app/journal/page.tsx",
+        "src/components/JournalForm.tsx",
+        "src/app/api/journal/route.ts"
+      ]
+    },
+    {
+      "name": "Analytics Dashboard",
+      "description": "Analytics and reporting for review metrics and quality indicators",
+      "files": [
+        "src/app/analytics/page.tsx",
+        "src/app/api/analytics/route.ts"
+      ]
+    },
+    {
+      "name": "Auto-Check System",
+      "description": "Automated quality checks for duplicates, conflicts, and coverage analysis",
+      "files": [
+        "src/lib/autochecks/run.ts",
+        "src/lib/autochecks/duplicates.ts",
+        "src/lib/autochecks/numbers.ts",
+        "src/lib/autochecks/bloom.ts",
+        "src/lib/autochecks/competency.ts"
+      ]
+    },
+    {
+      "name": "Data Management",
+      "description": "Database operations and in-memory dev store for development",
+      "files": [
+        "src/lib/db.ts",
+        "src/lib/dev-store.ts",
+        "src/lib/types.ts",
+        "prisma/schema.prisma"
+      ]
+    },
+    {
+      "name": "API Endpoints",
+      "description": "RESTful API endpoints for items, analytics, and journal operations",
+      "files": [
+        "src/app/api/items/route.ts",
+        "src/app/api/items/[id]/route.ts",
+        "src/app/api/analytics/route.ts",
+        "src/app/api/journal/route.ts",
+        "src/app/api/health/route.ts"
+      ]
+    },
+    {
+      "name": "UI Components",
+      "description": "Reusable UI components with theme support and accessibility",
+      "files": [
+        "src/components/Header.tsx",
+        "src/components/ThemeProvider.tsx",
+        "src/components/ThemeToggle.tsx",
+        "src/components/SessionProvider.tsx"
+      ]
+    }
+  ]
+}

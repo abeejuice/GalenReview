@@ -6,6 +6,7 @@ function normalizeText(text: string): string {
 }
 
 export async function findSimilarItems(itemId: string, threshold: number = 0.85): Promise<string[]> {
+  if (!db) return []
   try {
     const currentItem = await db.item.findUnique({
       where: { id: itemId },

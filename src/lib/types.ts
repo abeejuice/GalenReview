@@ -27,6 +27,16 @@ export const FlashcardIntakeSchema = z.object({
 })
 
 // MCQ intake schema
+const AutoChecksInputSchema = z
+  .object({
+    duplicates: z.array(z.string()).optional(),
+    conflicts: z.array(z.string()).optional(),
+    coverage: z.number().optional(),
+    bloomLevel: z.string().optional(),
+    suggestedComps: z.array(z.string()).optional(),
+  })
+  .partial()
+
 export const McqIntakeSchema = z.object({
   type: z.literal('MCQ'),
   subject: z.string().min(1),
@@ -43,6 +53,7 @@ export const McqIntakeSchema = z.object({
     page: z.string().optional(),
     url: z.string().url().optional(),
   })).min(1),
+  autoChecks: AutoChecksInputSchema.optional(),
 }).refine((data) => {
   // Ensure correctIndex is within options range
   return data.mcq.correctIndex < data.mcq.options.length
