@@ -1,0 +1,102 @@
+{
+  "project_name": "GalenAI Reviewer Dashboard",
+  "version": "1.0.0",
+  "description": "A medical content review platform for educational materials including flashcards and MCQs",
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "title": "Authentication System",
+      "description": "Users must be able to sign in with development credentials",
+      "priority": "high",
+      "acceptance_criteria": [
+        "User can sign in with any email address",
+        "Session is maintained across page navigation",
+        "Protected routes redirect to sign-in when not authenticated"
+      ]
+    },
+    {
+      "id": "REQ-002", 
+      "title": "Review Queue Management",
+      "description": "Reviewers can view and manage items in the review queue",
+      "priority": "high",
+      "acceptance_criteria": [
+        "Items are displayed in a grid layout",
+        "Items can be filtered by subject, type, status, and quality flags",
+        "Item status can be updated (approve, request changes, send back)",
+        "Quality indicators are displayed for each item"
+      ]
+    },
+    {
+      "id": "REQ-003",
+      "title": "Item Detail View",
+      "description": "Reviewers can view detailed information about individual items",
+      "priority": "high", 
+      "acceptance_criteria": [
+        "Item details include question, answer, references, and auto-checks",
+        "Action buttons allow status updates",
+        "References are properly linked and displayed",
+        "Auto-check results are clearly shown"
+      ]
+    },
+    {
+      "id": "REQ-004",
+      "title": "Content Intake System",
+      "description": "New content can be submitted for review",
+      "priority": "medium",
+      "acceptance_criteria": [
+        "Flashcards can be created with question and answer",
+        "MCQs can be created with options and correct answer",
+        "Form validation prevents invalid submissions",
+        "Bulk upload supports multiple items"
+      ]
+    },
+    {
+      "id": "REQ-005",
+      "title": "Journal System",
+      "description": "Reviewers can maintain notes and observations",
+      "priority": "medium",
+      "acceptance_criteria": [
+        "Notes can be created and saved",
+        "Note history is displayed chronologically",
+        "Notes can be linked to specific items",
+        "Notes persist across sessions"
+      ]
+    },
+    {
+      "id": "REQ-006",
+      "title": "Analytics Dashboard",
+      "description": "Review metrics and quality indicators are displayed",
+      "priority": "medium",
+      "acceptance_criteria": [
+        "Total items and status counts are shown",
+        "Subject and type distribution charts are displayed",
+        "Quality indicators (duplicates, conflicts, coverage) are tracked",
+        "Data is updated in real-time"
+      ]
+    },
+    {
+      "id": "REQ-007",
+      "title": "API Endpoints",
+      "description": "Backend APIs support all frontend functionality",
+      "priority": "high",
+      "acceptance_criteria": [
+        "All API endpoints return proper HTTP status codes",
+        "Data is returned in correct JSON format",
+        "Error handling provides meaningful messages",
+        "Authentication is properly enforced"
+      ]
+    },
+    {
+      "id": "REQ-008",
+      "title": "Auto-Check System",
+      "description": "Automated quality checks analyze content",
+      "priority": "medium",
+      "acceptance_criteria": [
+        "Duplicate detection identifies similar content",
+        "Coverage analysis evaluates reference completeness",
+        "Bloom taxonomy classification is applied",
+        "Competency mapping suggests appropriate subjects"
+      ]
+    }
+  ]
+}

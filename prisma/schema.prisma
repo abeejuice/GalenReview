@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CONTRIBUTOR
+  REVIEWER
+}
+
+enum ItemType {
+  FLASHCARD
+  MCQ
+}
+
+enum Status {
+  DRAFT
+  NEEDS_REVIEW
+  CHANGES_REQUESTED
+  PUBLISHED
+}
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  name          String?
+  role          Role          @default(REVIEWER)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  items         Item[]
+  journalNotes  JournalNote[]
+}
+
+model Competency {
+  id          String @id
+  name        String
+  description String?
+  items       Item[]
+}
+
+model Item {
+  id           String      @id @default(cuid())
+  type         ItemType
+  subject      String
+  topic        String
+  status       Status      @default(NEEDS_REVIEW)
+  userId       String
+  competencyId String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id])
+  competency   Competency   @relation(fields: [competencyId], references: [id])
+  flashcard    Flashcard?
+  mcq          MCQ?
+  references   Reference[]
+  autoChecks   AutoChecks?
+  journalNotes JournalNote[]
+}
+
+model Flashcard {
+  id       String @id @default(cuid())
+  question String
+  answer   String
+  itemId   String @unique
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model MCQ {
+  id            String   @id @default(cuid())
+  question      String
+  options       String[]
+  correctIndex  Int
+  explanation   String?
+  itemId        String   @unique
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model Reference {
+  id     String  @id @default(cuid())
+  title  String
+  page   String?
+  url    String?
+  itemId String
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model AutoChecks {
+  id              String   @id @default(cuid())
+  itemId          String   @unique
+  duplicates      String[]
+  conflicts       String[]
+  coverage        Float
+  bloomLevel      String?
+  suggestedComps  String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+model JournalNote {
+  id        String   @id @default(cuid())
+  content   String
+  itemId    String?
+  userId    String
+  createdAt DateTime @default(now())
+
+  item Item? @relation(fields: [itemId], references: [id])
+  user User  @relation(fields: [userId], references: [id])
+}
