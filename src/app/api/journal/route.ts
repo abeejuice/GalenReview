@@ -11,9 +11,11 @@ const MAX_CONTENT_LENGTH = 2000
 
 export async function GET() {
   try {
+    let session = null
+    
     // Skip authentication in development mode
     if (process.env.NODE_ENV === 'production') {
-      const session = await getServerSession(authOptions)
+      session = await getServerSession(authOptions)
       if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
@@ -21,7 +23,7 @@ export async function GET() {
 
     if (isDatabaseConfigured && db) {
       const notes = await db.journalNote.findMany({
-        where: { userId: session.user.id },
+        where: { userId: session?.user?.id || 'dev-user-1' },
         orderBy: { createdAt: 'desc' },
         take: 50,
       })
@@ -29,7 +31,7 @@ export async function GET() {
     }
 
     // Use a default user ID for development
-    const userId = process.env.NODE_ENV === 'production' ? session.user.id : 'dev-user-1'
+    const userId = session?.user?.id || 'dev-user-1'
     const notes = getDevJournalNotesForUser(userId)
     return NextResponse.json(notes)
   } catch (error) {
@@ -40,9 +42,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    let session = null
+    
     // Skip authentication in development mode
     if (process.env.NODE_ENV === 'production') {
-      const session = await getServerSession(authOptions)
+      session = await getServerSession(authOptions)
       if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
@@ -61,7 +65,7 @@ export async function POST(request: NextRequest) {
       const note = await db.journalNote.create({
         data: {
           content: content.trim(),
-          userId: session.user.id,
+          userId: session?.user?.id || 'dev-user-1',
           itemId: itemId && typeof itemId === 'string' ? itemId : null,
         },
       })
@@ -69,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use a default user ID for development
-    const userId = process.env.NODE_ENV === 'production' ? session.user.id : 'dev-user-1'
+    const userId = session?.user?.id || 'dev-user-1'
     const note = addDevJournalNote({
       userId: userId,
       content: content.trim(),
